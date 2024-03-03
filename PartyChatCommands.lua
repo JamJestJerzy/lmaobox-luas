@@ -87,7 +87,10 @@ local commands = {
         else
             say_party("You are not allowed to do that!")
         end
-    end)
+    end, "Executes given command in console (if u have permissions to do so)"),
+    createCommand({ "kickrandom" }, function ()
+        
+    end), --idea: [U:1:1098458162]
 }
 
 local function getCommand (name)
