@@ -46,21 +46,17 @@ local function createCommand (aliases, callback, description)
     }
 end
 
-local steamid64ident = 76561197960265728
-local function commid_to_steamid(commid)
-    local steamid = {}
-    table.insert(steamid, "STEAM_0:")
-    local steamidacct = tonumber(commid) - steamid64ident
-
-    if steamidacct % 2 == 0 then
-        table.insert(steamid, "0:")
-    else
-        table.insert(steamid, "1:")
+local function ID64_to_ID3 (steamID64)
+    if not tonumber(steamID64) then
+        return false, "Invalid SteamID"
     end
 
-    table.insert(steamid, tostring(steamidacct // 2))
+    local steamID = tonumber(steamID64)
+    if (steamID - 0x110000100000000) < 0 then
+        return false, "Not a SteamID64"
+    end
 
-    return table.concat(steamid)
+    return ("[U:1:%d]"):format(steamID - 0x110000100000000)
 end
 
 local function say_party (str)
@@ -83,7 +79,15 @@ local commands = {
                 say_party(v)
             end
         end
-    end, "queues into casual match")
+    end, "queues into casual match"),
+    createCommand({ "eval", "e" }, function (args, steamID)
+        if arrayContains(trusted, steamID) then
+            local command = table.concat(args, " ")
+            client.Command(command, true)
+        else
+            say_party("You are not allowed to do that!")
+        end
+    end)
 }
 
 local function getCommand (name)
@@ -102,7 +106,11 @@ local function executeCommand (name, steamID)
     name = args[1]
     table.remove(args, 1)
 
-    getCommand(name).execute(args, steamID)
+    local command = getCommand(name)
+
+    if command ~= nil then
+        command.execute(args, steamID)
+    end
 end
 
 callbacks.Register("GCRetrieveMessage", "catt_gc_recv", function(typeID, data)
@@ -113,10 +121,8 @@ callbacks.Register("GCRetrieveMessage", "catt_gc_recv", function(typeID, data)
 
 		print(string.format("(Party) %s: %s", username, message))
         
-        if startsWith(message, prefix) then
-            local command = removePrefix(message)
-            executeCommand(command, data[2])
-        end
+        local command = removePrefix(message)
+        executeCommand(command, ID64_to_ID3(data[2]))
     end
 
 	return E_GCResults.k_EGCResultOK
